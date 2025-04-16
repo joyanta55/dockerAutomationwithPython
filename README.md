@@ -33,7 +33,7 @@ Follwed by
 ```
 docker run -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v /usr/local/bin/docker:/usr/local/bin/docker -it dockercheck
 ```
-The above command does two things. 1) Mounts the host /tmp directory with the docker image /tmp directory, 2) allow container to communicate with the host Docker daemon (a.k.a `Docker-in-Docker`). 
+The above command does two things. 1) Mounts the host `/tmp` directory with the docker image `/tmp` directory, 2) allow container to communicate with the host Docker daemon (a.k.a `Docker-in-Docker`). 
 
 ### What it does
 This code takes two types of input.
