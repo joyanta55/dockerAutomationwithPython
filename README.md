@@ -2,7 +2,10 @@
 
 #### Prerequisite: `Docker` 
 
-Before proceeding, ensure that Docker is accessible in a `rootless` environment on your host. To check if Docker is running in `rootless` mode, try running the following command: `docker run hello-world`. If this runs without requiring sudo, you're good to go.
+Before proceeding, ensure that Docker is accessible in a `rootless` environment on your host. To check if Docker is running in `rootless` mode, try running the following command: 
+```docker run hello-world```. 
+
+If this runs without requiring `sudo`, you're good to go.
 
 ## Steps
 Create a python 3.12 virtual environment, and activate it.
