@@ -3,14 +3,15 @@ import os
 import shutil
 import tempfile
 
-PYTHON_IMAGE_LIST = ["python:3.7-slim","python:3.8-slim", "python:3.9-slim", "python:3.10-slim","python:3.11-slim","python:3.12-slim"]
+PYTHON_IMAGE_LIST = ["python:3.7-slim", "python:3.8-slim", "python:3.9-slim", "python:3.10-slim", "python:3.11-slim", "python:3.12-slim"]
 
 class DockerHandler:
     def __init__(self, dockerfile_content, image_tag, directory):
-        self.dockerfile_content = dockerfile_content
+        self.dockerfile_content = dockerfile_content.strip()  # Strip any extra spaces around the content
         self.image_tag = image_tag
         self.directory = directory  # Directory where app.py should be
         self.client = docker.from_env()  # Docker client initialization
+        self.temp_dir = None  # Will store temporary directory for cleanup
 
     def validate_directory(self):
         """Ensure that app.py exists in the given directory."""
@@ -24,25 +25,26 @@ class DockerHandler:
         """Copy the directory contents to a temporary location."""
         try:
             # Create a temporary directory to copy files to
-            temp_dir = tempfile.mkdtemp(dir="/tmp", prefix="test_")
-            print(f"Copying contents to {temp_dir}...")
+            self.temp_dir = tempfile.mkdtemp(dir="/tmp", prefix="test_")
+            print(f"Copying contents to {self.temp_dir}...")
 
             # Copy all files from the source directory to the temp directory
             for item in os.listdir(self.directory):
                 source_item = os.path.join(self.directory, item)
-                dest_item = os.path.join(temp_dir, item)
+                dest_item = os.path.join(self.temp_dir, item)
                 if os.path.isdir(source_item):
                     shutil.copytree(source_item, dest_item)
                 else:
                     shutil.copy2(source_item, dest_item)
-            
+
             # Also write the Dockerfile in the temp directory
-            with open(os.path.join(temp_dir, "Dockerfile"), "w") as f:
+            with open(os.path.join(self.temp_dir, "Dockerfile"), "w") as f:
                 f.write(self.dockerfile_content)
 
-            return temp_dir
+            return self.temp_dir
         except Exception as e:
             print(f"Error copying directory: {e}")
+            self.cleanup_temp_dir()  # Clean up if something goes wrong
             return None
 
     def build_image(self, temp_dir):
@@ -53,14 +55,17 @@ class DockerHandler:
             for line in build_log:
                 if 'error' in line:
                     print(f"Build error: {line.get('error')}")
+                    self.cleanup_temp_dir()  # Clean up on failure
                     return False  # Return False if there is a build error
             print(f"Docker image {self.image_tag} built successfully.")
             return True
         except docker.errors.BuildError as e:
             print(f"Build failed: {e}")
+            self.cleanup_temp_dir()  # Clean up on failure
             return False
         except Exception as e:
             print(f"Error building the image: {e}")
+            self.cleanup_temp_dir()  # Clean up on failure
             return False
 
     def run_container(self):
@@ -71,9 +76,11 @@ class DockerHandler:
             return container
         except docker.errors.ContainerError as e:
             print(f"Error running the container: {e}")
+            self.cleanup_temp_dir()  # Clean up on failure
             return None
         except Exception as e:
             print(f"Error running the container: {e}")
+            self.cleanup_temp_dir()  # Clean up on failure
             return None
 
     def get_logs(self, container):
@@ -84,6 +91,7 @@ class DockerHandler:
             return True
         except Exception as e:
             print(f"Error fetching container logs: {e}")
+            self.cleanup_temp_dir()  # Clean up on failure
             return False
 
     def stop_container(self, container):
@@ -94,6 +102,7 @@ class DockerHandler:
             return True
         except Exception as e:
             print(f"Error stopping the container: {e}")
+            self.cleanup_temp_dir()  # Clean up on failure
             return False
 
     def remove_container(self, container):
@@ -105,7 +114,19 @@ class DockerHandler:
             return True
         except Exception as e:
             print(f"Error removing the container: {e}")
+            self.cleanup_temp_dir()  # Clean up on failure
             return False
+
+    def cleanup_temp_dir(self):
+        """Delete the temporary directory to clean up."""
+        if self.temp_dir and os.path.exists(self.temp_dir):
+            try:
+                shutil.rmtree(self.temp_dir)
+                print(f"Temporary directory {self.temp_dir} cleaned up.")
+            except Exception as e:
+                print(f"Error cleaning up temporary directory {self.temp_dir}: {e}")
+        else:
+            print(f"No temporary directory to clean up or it already exists.")
 
     def execute(self):
         """Main method to validate, copy files, build image, run container, and fetch logs."""
@@ -120,13 +141,22 @@ class DockerHandler:
             return False
 
         container = self.run_container()
+
         if container:
             if not self.get_logs(container):
                 return False
             if not self.remove_container(container):
                 return False
+            # Save the successful Dockerfile content to /tmp/executionWorkspace
+            dockerfile_path = os.path.join(self.directory, "Dockerfile")
+            with open(dockerfile_path, "w") as f:
+                f.write(self.dockerfile_content)
+            print(f"Successful Dockerfile content saved to {dockerfile_path}")
+            # Cleanup temporary directory after the operation is complete
+            self.cleanup_temp_dir()
             return True
         return False
+
 def main():
     # Dockerfile content for a Python-based image
     dockerfile_content = """
@@ -150,17 +180,15 @@ def main():
 
         inputOption = input("Enter 1 if you want to provide source code, Enter 2 if you want to provide the directory location where your app.py (main method) located \n")
 
-        if inputOption!= '1' and inputOption!= '2':
+        if inputOption != '1' and inputOption != '2':
             continue
 
-        
         if inputOption == '1':
 
             directory = "/tmp/executionWorkspace"
 
             if not os.path.exists(directory):
                 os.makedirs(directory)
-                # print(f"Directory '{directory}' created.")
             print("Input your source code line by line. Type 'END' (without quotes) to finish.")
             sourceCode = ""
             while True:
@@ -170,9 +198,6 @@ def main():
                 sourceCode += line + "\n"  # Append each line to sourceCode
             with open(os.path.join(directory, "app.py"), "w") as file:
                 file.write(sourceCode)
-
-            #print("Source code written to app.py.")
-
 
         if inputOption == '2':
             directory = input("Enter the directory path where your app.py file is located (type 'exit' to quit): ")
@@ -198,7 +223,7 @@ def main():
             dockerfile = dockerfile_content.replace("{version}", version)
             dockerHandler = DockerHandler(dockerfile, image_tag, directory)
             if dockerHandler.execute():
-                print("Execution completed successfully with python version "+version)
+                print("Execution completed successfully with python version " + version)
                 break
             else:
                 print("Execution failed. Please check the logs for errors.")
