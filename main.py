@@ -37,6 +37,12 @@ class DockerHandler:
                 else:
                     shutil.copy2(source_item, dest_item)
 
+            # Copy requirements.txt if it exists in the user's provided directory
+            requirements_path = os.path.join(self.directory, "requirements.txt")
+            if os.path.exists(requirements_path):
+                shutil.copy2(requirements_path, os.path.join(self.temp_dir, "requirements.txt"))
+                print("requirements.txt found and copied to temp directory.")
+
             # Also write the Dockerfile in the temp directory
             with open(os.path.join(self.temp_dir, "Dockerfile"), "w") as f:
                 f.write(self.dockerfile_content)
@@ -158,7 +164,7 @@ class DockerHandler:
         return False
 
 def main():
-    # Dockerfile content for a Python-based image
+    # Dockerfile content for a Python-based image, including pip install for requirements.txt
     dockerfile_content = """
     # Use an official Python runtime as a parent image
     FROM {version}
@@ -169,7 +175,8 @@ def main():
     # Copy the current directory contents into the container at /app
     COPY . /app
 
-    RUN python app.py
+    # Install dependencies from requirements.txt
+    RUN pip install -r requirements.txt
 
     # Run the application when the container starts
     CMD ["python", "app.py"]
