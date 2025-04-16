@@ -81,8 +81,7 @@ If you put `2`, then the cosole will alow you to upload a python project directo
 ```
 cp -r python_code /tmp
 ```
-Then in the prompt provide `/tmp/python_code` and check the validation and docker image creation. For example, the `python_code` I shared, it doesn't run on python 3.7, but python 3.8. Check the logs, will have fun.
-
+Then in the prompt provide `/tmp/python_code` and check the validation and docker image creation. For example, the `python_code` I shared, it doesn't run on `python 3.7`, but `python 3.8`. Check the logs to understand the process.
 Here's my console log, hope that helps
 
 ```
