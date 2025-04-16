@@ -2,8 +2,10 @@
 
 #### Prerequisite: `Docker` 
 
-Before proceeding, ensure that Docker is accessible in a `rootless` environment on your host. To check if Docker is running in `rootless` mode, try running the following command: 
-```docker run hello-world```. 
+Before proceeding, ensure that `Docker` is accessible in a `rootless` environment on your machine. To check if Docker is running in `rootless` mode, try running the following command: 
+```
+docker run hello-world
+``` 
 
 If this runs without requiring `sudo`, you're good to go.
 
